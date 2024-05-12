@@ -1075,6 +1075,7 @@ move_dashboard_gadget -name {methodology_1} -row 2 -col 1
 
 # ----- Launch Simulation -----# 
 set_property target_simulator "XSim" [current_project]  
+set_property -name {xsim.simulate.log_all_signals} -value {true} -objects [get_filesets sim_1]
 launch_simulation -mode behavioral
 run all
 
