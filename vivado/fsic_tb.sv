@@ -19,7 +19,7 @@
 // 
 //////////////////////////////////////////////////////////////////////////////////
 
-`define SHOW_HEART_BEAT 1
+//`define SHOW_HEART_BEAT 1
  
 import axi_vip_pkg::*;
 import design_1_axi_vip_0_0_pkg::*;
@@ -70,10 +70,10 @@ module fsic_tb();
     design_1_axi_vip_2_0_slv_mem_t  slave_agent2;
     design_1_axi_vip_3_0_slv_mem_t  slave_agent3;
 
+      reg timeout_flag;
     `ifdef SHOW_HEART_BEAT
       reg [31:0] repeat_cnt;
       reg finish_flag;
-      reg timeout_flag;
       initial begin
         $timeformat (-9, 3, " ns", 13); 
         //$dumpfile("top_bench.vcd");
@@ -88,7 +88,10 @@ module fsic_tb();
         end  
         while(finish_flag == 0 && repeat_cnt <= 330 );
         timeout_flag = 1;
-      end   
+      end
+    `else begin
+      initial timeout_flag = 0;  
+    end
     `endif //SHOW_HEART_BEAT
 
     initial begin    
@@ -279,7 +282,7 @@ module fsic_tb();
                     `ifdef USE_EDGEDETECT_IP
 
                         // =================fir configuration start=========================//
-                        data = 230400;
+                        data = 57600;
                         axil_cycles_gen(WriteCyc, SOC_UP, 32'h10, data, 1);//data length
                         data =  32'd0 ;
                         axil_cycles_gen(WriteCyc, SOC_UP, 32'h20, data, 1);//tap0
@@ -319,7 +322,7 @@ module fsic_tb();
                         offset = 16;
                         axil_cycles_gen(ReadCyc, SOC_UP, offset, data, 1);
                         #10us
-                        if(data == 32'd230400) begin // data length
+                        if(data == 32'd57600) begin // data length
                             $display($time, "=> Fpga2Soc_Read SOC_UP offset %h = %h, PASS", offset, data);
                         end else begin
                             $display($time, "=> Fpga2Soc_Read SOC_UP offset %h = %h, FAIL", offset, data);
@@ -943,6 +946,7 @@ module fsic_tb();
     endtask
 
     reg [7:0] updma_img [0:230399];
+    reg [31:0] fir_input [0:57600-1];
     reg [31:0] updma_data;
     reg signed [31:0] golden_output_data;
 
@@ -952,16 +956,16 @@ module fsic_tb();
             $display($time, "=> =======================================================================");
 
             //$readmemh("../../../../../in_img.hex", updma_img);
-
+            $readmemh("../../../../../updma_input.log",fir_input);
             //fd = $fopen ("../../../../../updma_input.log", "w");
-            for (index = 0; index < 230400; index +=1) begin
+            for (index = 0; index < 57600; index +=1) begin
                 //updma_data |= updma_img[index];
                 //updma_data |= updma_img[index+1] << 8;
                 //updma_data |= updma_img[index+2] << 16;
                 //updma_data |= updma_img[index+3] << 24;
-                slave_agent3.mem_model.backdoor_memory_write_4byte(addri+index*4,index,4'b1111);
+                slave_agent3.mem_model.backdoor_memory_write_4byte(addri+index*4,fir_input[index],4'b1111);
                 updma_data = 0;
-                $fdisplay("%08h", slave_agent3.mem_model.backdoor_memory_read_4byte(addri+index*4));
+                $display("%08h", slave_agent3.mem_model.backdoor_memory_read_4byte(addri+index*4));
             end
             //$fclose(fd);
 
@@ -1206,7 +1210,7 @@ module fsic_tb();
                     keepChk = 0;
 
                     fd = $fopen ("../../../../../updma_output.log", "w");
-                    for (index = 0; index < 64; index +=1) begin
+                    for (index = 0; index < 57600; index +=1) begin
                         $fdisplay(fd, "%08h", slave_agent2.mem_model.backdoor_memory_read_4byte(addro+index*4));
                     end
 
